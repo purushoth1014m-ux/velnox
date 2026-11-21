@@ -7,9 +7,11 @@
 .vx-hero-art{--ground:447;--cargo-width:117;--art-width:100vw;position:absolute;top:0;left:0;width:100%;height:var(--scene-edge);display:grid;grid-template-columns:minmax(0,1fr);place-items:end center;pointer-events:none}
 .vx-loading-stage{position:relative;width:var(--art-width);height:calc(var(--art-width) * var(--ground) / 960)}
 .vx-loading-stage::before{content:'';position:absolute;top:100%;left:50%;width:100vw;height:100vh;transform:translateX(-50%);background:#111}
-.vx-loading-video,.vx-mobile-frames{position:absolute;top:0;left:0;width:100%;height:calc(var(--art-width) * 9 / 16);clip-path:inset(0 0 calc(100% - 100% * var(--ground) / 540) 0)}
+.vx-loading-media{position:absolute;inset:0;overflow:hidden}
+.vx-loading-video,.vx-mobile-frames{position:absolute;top:0;left:0;width:100%;height:calc(var(--art-width) * 9 / 16)}
 .vx-loading-video{display:block;object-fit:cover}
 .vx-mobile-frames{display:none;background-size:100% 100%;background-repeat:no-repeat}
+.vx-mobile-frames img{position:absolute;top:0;left:0;width:500%;height:400%;max-width:none;visibility:hidden}
 .vx-scroll.phone .vx-loading-video{display:none}
 .vx-scroll.phone .vx-mobile-frames{display:block}
 .vx-cargo-brand{position:absolute;left:var(--cargo-x,50%);top:var(--cargo-y,50%);transform:translate(-50%,-50%);opacity:var(--brand-opacity,0);color:#fff8dd;font:600 calc(var(--art-width) * var(--cargo-width) / 960 * .079)/1 Archivo,Arial,sans-serif;letter-spacing:.11em;white-space:nowrap;text-shadow:0 1px 2px #102b1b}

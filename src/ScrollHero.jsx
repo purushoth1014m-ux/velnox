@@ -15,8 +15,8 @@ const heroAlt='A forest-green reach stacker lifting a cargo container above a st
 const loadingClip='./media/handling-velnox-loading.mp4';
 const LAST_FRAME=96;
 const MOBILE_SHEET_COUNT=5;
-const MOBILE_SHEET_COLUMNS=4;
-const MOBILE_SHEET_ROWS=3;
+const MOBILE_SHEET_COLUMNS=5;
+const MOBILE_SHEET_ROWS=4;
 const cargoTrack=[
   // Frame, container left, top, right, bottom, and ground height in the 960×540 video.
   [0,516,145,633,254,447],[26,470,109,668,230,447],
@@ -52,7 +52,7 @@ export default function ScrollHero(){
     const video=art.querySelector('video'),mobileFrames=art.querySelector('.vx-mobile-frames');
     let vw=innerWidth,vh=innerHeight,A=2.4,B=3,width=0,lettersWidth=0,travel=0,disposed=false,phone=false;
     let requestedFrame=0,displayedFrame=0,sceneEdge=0,ground=447,mobileZoom=1;
-    let sheets;
+    let sheets,activeSheet,framePosition=0,animationId=0;
     function sizeArtwork(){
       const cameraWidth=vw*(phone?mobileZoom:1);
       art.style.setProperty('--art-width',Math.min(cameraWidth,sceneEdge*960/ground)+'px');
@@ -92,29 +92,42 @@ export default function ScrollHero(){
       syncArtwork(clamp(Math.floor(video.currentTime*24+.01),0,LAST_FRAME));
       seek();
     }
-    function showMobileFrame(){
-      const frame=Math.round(requestedFrame/2)*2;
+    function showMobileFrame(frame){
       const framesPerSheet=MOBILE_SHEET_COLUMNS*MOBILE_SHEET_ROWS;
-      const index=frame/2;
-      const sheet=sheets[Math.floor(index/framesPerSheet)];
-      if(!sheet.loaded)return;
-      const tile=index%framesPerSheet;
-      const x=(tile%MOBILE_SHEET_COLUMNS)/(MOBILE_SHEET_COLUMNS-1)*100;
-      const y=Math.floor(tile/MOBILE_SHEET_COLUMNS)/(MOBILE_SHEET_ROWS-1)*100;
-      mobileFrames.style.backgroundImage=`url("${sheet.image.src}")`;
-      mobileFrames.style.backgroundSize=`${MOBILE_SHEET_COLUMNS*100}% ${MOBILE_SHEET_ROWS*100}%`;
-      mobileFrames.style.backgroundPosition=`${x}% ${y}%`;
-      if(frame!==displayedFrame)syncArtwork(frame);
+      const sheet=sheets[Math.floor(frame/framesPerSheet)];
+      if(!sheet.loaded||(activeSheet&&frame===displayedFrame))return;
+      const tile=frame%framesPerSheet;
+      const x=(tile%MOBILE_SHEET_COLUMNS)*100/MOBILE_SHEET_COLUMNS;
+      const y=Math.floor(tile/MOBILE_SHEET_COLUMNS)*100/MOBILE_SHEET_ROWS;
+      sheet.image.style.transform=`translate3d(-${x}%,-${y}%,0)`;
+      if(activeSheet!==sheet){
+        sheet.image.style.visibility='visible';
+        if(activeSheet)activeSheet.image.style.visibility='hidden';
+        activeSheet=sheet;
+      }
+      syncArtwork(frame);
+    }
+    function animateMobile(){
+      animationId=0;
+      if(disposed||!phone)return;
+      const remaining=requestedFrame-framePosition;
+      framePosition=Math.abs(remaining)<1?requestedFrame:framePosition+remaining*.45;
+      showMobileFrame(Math.round(framePosition));
+      if(framePosition!==requestedFrame)queueMobile();
+    }
+    function queueMobile(){
+      if(!animationId)animationId=requestAnimationFrame(animateMobile);
     }
     function loadMobileFrames(){
-      sheets=Array.from({length:MOBILE_SHEET_COUNT},(_,index)=>{
-        const image=new Image();
+      sheets=[...mobileFrames.querySelectorAll('img')].map((image,index)=>{
         const sheet={image,loaded:false};
-        image.onload=()=>{
+        image.onload=async()=>{
+          if(image.decode)await image.decode().catch(()=>{});
           sheet.loaded=true;
-          if(!disposed&&phone)showMobileFrame();
+          if(!disposed&&phone)queueMobile();
         };
-        image.src=`./media/handling-mobile-${index}.jpg`;
+        image.src=`./media/handling-mobile-smooth-${index}.jpg`;
+        if(image.complete&&image.naturalWidth)image.onload();
         return sheet;
       });
     }
@@ -122,8 +135,9 @@ export default function ScrollHero(){
     const position=()=>clamp(scrollY-trackTop(),0,(A+B)*vh);
     function render(){
       const y=position(),q=clamp(y/(A*vh)),r=clamp((y-A*vh)/(B*vh));
-      requestedFrame=Math.round(q*LAST_FRAME);
-      if(phone)showMobileFrame();else seek();
+      const openingScroll=phone?.07:.12;
+      requestedFrame=Math.round(q<openingScroll?q/openingScroll*19:19+(q-openingScroll)/(1-openingScroll)*(LAST_FRAME-19));
+      if(phone)queueMobile();else seek();
       const settled=q>=1;host.classList.toggle('settled',settled);host.style.setProperty('--ph',settled?'1':'0');
       strip.style.transform=`translate3d(${phone?-r*travel:vw-r*travel}px,0,0)`;
       letters.style.transform=`translate3d(${vw-r*(lettersWidth+vw)}px,0,0)`;
@@ -144,7 +158,7 @@ export default function ScrollHero(){
       if(phone&&!sheets)loadMobileFrames();
       if(!phone&&!video.hasAttribute('src'))video.src=loadingClip;
       vh=scene.clientHeight;
-      A=phone?1.35:2.4;
+      A=phone?1.08:1.85;
       const u=phone?Math.min(vw/430,vh/760,1.4):Math.min(vw/1440,vh/960);
       host.style.setProperty('--u',u+'px');
       width=strip.scrollWidth;
@@ -166,15 +180,19 @@ export default function ScrollHero(){
       const r=clamp(offset/travel);
       scrollTo({top:trackTop()+A*vh+r*B*vh,behavior:'instant'});
     };nextButton.addEventListener('click',nextCategory);
-    return()=>{disposed=true;video.removeEventListener('loadedmetadata',seek);video.removeEventListener('seeked',onSeeked);window.removeEventListener('scroll',render);window.removeEventListener('resize',layout);window.removeEventListener('orientationchange',layout);nextButton.removeEventListener('click',nextCategory)};
+    return()=>{disposed=true;cancelAnimationFrame(animationId);video.removeEventListener('loadedmetadata',seek);video.removeEventListener('seeked',onSeeked);window.removeEventListener('scroll',render);window.removeEventListener('resize',layout);window.removeEventListener('orientationchange',layout);nextButton.removeEventListener('click',nextCategory)};
   },[reduced]);
   if(reduced)return <section className="vx-static"><div className="container"><p className="eyebrow">Velnox Exports / Global possibilities</p><h1>Fresh produce.<br/><em>Global possibilities.</em></h1><p>Vegetables, fruits and broader product sourcing, shaped around your buyer requirements.</p><a className="pill" href="./products.html">Explore our products<ArrowUpRight size={16}/></a><img src={heroImage} alt={heroAlt} fetchPriority="high"/><div className="vx-static-links">{CATEGORIES.map(c=><a key={c.name} href={c.href}>{c.name}<ArrowUpRight size={15}/></a>)}</div></div></section>;
   return <section className="vx-scroll" ref={hostRef} aria-label="Velnox export handling and product categories">
     <div className="vx-scene">
       <div className="vx-hero-art">
         <div className="vx-loading-stage" role="img" aria-label="Workers guide a green VELNOX EXPORT container onto a black truck with a driver in the cab">
-        <video className="vx-loading-video" poster={heroImage} muted playsInline preload="auto" aria-hidden="true"/>
-        <span className="vx-mobile-frames" style={{backgroundImage:`url("${heroImage}")`}} aria-hidden="true"/>
+        <div className="vx-loading-media" aria-hidden="true">
+          <video className="vx-loading-video" poster={heroImage} muted playsInline preload="auto"/>
+          <span className="vx-mobile-frames" style={{backgroundImage:`url("${heroImage}")`}}>
+            {Array.from({length:MOBILE_SHEET_COUNT},(_,index)=><img key={index} alt="" draggable="false"/>)}
+          </span>
+        </div>
         <span className="vx-cargo-brand" aria-hidden="true">VELNOX EXPORT</span>
         <span className="vx-truck-driver" aria-hidden="true">
           <span className="vx-driver-seat"/>
