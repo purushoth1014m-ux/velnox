@@ -30,7 +30,7 @@ export function BannerMotion({page}) {
         <g transform="translate(210 210) rotate(-28.9)">
           <path className="packing-flap packing-flap-right" d="M0 0h166l86-32H86Z"/>
         </g>
-        {['chilli','onion','banana'].map((product,index)=><g key={product} className="packing-product-card" style={{'--packing-delay':`${index*1.55}s`}}>
+        {['chilli','onion','banana'].map((product,index)=><g key={product} className="packing-product-card" style={{'--packing-index':index}}>
           <rect x="-54" y="-53" width="108" height="106" rx="2" fill="#f8f5e9"/>
           <image href={`./images/${product}.jpg`} x="-49" y="-48" width="98" height="82" preserveAspectRatio="xMidYMid slice"/>
           <text x="0" y="46" textAnchor="middle" fill="#607755" fontSize="6.4" letterSpacing=".55">{product.toUpperCase()}</text>
