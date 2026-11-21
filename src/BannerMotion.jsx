@@ -6,7 +6,7 @@ import './banner-motion.css';
 // Decorative banner scenes do not communicate state needed to use the website.
 export function BannerMotion({page}) {
   const host=useRef(null);
-  useEffect(()=>{const el=host.current;if(!('IntersectionObserver'in window))return;const observer=new IntersectionObserver(([entry])=>el.classList.toggle('motion-active',entry.isIntersecting),{threshold:.1});observer.observe(el);return()=>observer.disconnect()},[]);
+  useEffect(()=>{const el=host.current;if(!('IntersectionObserver'in window)){el.classList.add('motion-active');return;}const observer=new IntersectionObserver(([entry])=>el.classList.toggle('motion-active',entry.isIntersecting),{threshold:.1});observer.observe(el);return()=>observer.disconnect()},[]);
   const type={'Our Products':'products','Quality & Packaging':'quality','Buyer Resources':'resources','Contact Us':'contact'}[page]||'products';
   return <div className={`banner-motion banner-${type}`} ref={host} aria-hidden="true">
     <span className="motion-coordinate coordinate-left">VELNOX / {type.toUpperCase()}</span>
@@ -21,15 +21,28 @@ export function BannerMotion({page}) {
     {type==='quality'&&<>
       <div className="packing-grid"/>
       <svg className="packing-svg" viewBox="0 0 420 310" fill="none">
-        <path className="technical-outline" d="M65 130 210 210l145-80M210 210v90M65 130v90l145 80 145-80v-90"/>
-        <path className="box-flap flap-left" d="m65 130 145 80-60-70L5 60l60 70Z"/>
-        <path className="box-flap flap-right" d="m355 130-145 80 60-70L415 60l-60 70Z"/>
-        <path className="box-flap flap-back" d="m65 130 145-80 145 80-145 80L65 130Z"/>
-        <path className="box-seam" d="M210 50v160M65 130l145 80 145-80"/>
         <path className="packing-measure" d="M50 240 194 320M370 240 226 320M380 135v85"/>
+        <path className="packing-interior" d="m65 130 145-80 145 80-145 80Z"/>
+        <path className="box-seam" d="M210 50v160"/>
+        <g transform="translate(65 130) rotate(28.9)">
+          <path className="packing-flap packing-flap-left" d="M0 0h166l-85-32H-86Z"/>
+        </g>
+        <g transform="translate(210 210) rotate(-28.9)">
+          <path className="packing-flap packing-flap-right" d="M0 0h166l86-32H86Z"/>
+        </g>
+        <g className="packing-product-card">
+          <rect x="-54" y="-53" width="108" height="106" rx="2" fill="#f8f5e9"/>
+          <image href="./images/chilli.jpg" x="-49" y="-48" width="98" height="82" preserveAspectRatio="xMidYMid slice"/>
+          <text x="0" y="46" textAnchor="middle" fill="#607755" fontSize="6.4" letterSpacing=".55">PRODUCT SPECIFICATION</text>
+        </g>
+        <path className="packing-wall packing-wall-left" d="m65 130 145 80v90L65 220Z"/>
+        <path className="packing-wall packing-wall-right" d="m210 210 145-80v90l-145 80Z"/>
+        <g className="packing-closed-lid">
+          <path d="m65 130 145-80 145 80-145 80Z"/>
+          <path className="box-seam" d="m138 90 145 80"/>
+        </g>
         <path className="packing-check" d="m180 246 18 17 32-38"/>
       </svg>
-      <div className="packing-photo"><img src="./images/chilli.jpg" alt=""/><span>PRODUCT SPECIFICATION</span></div>
       <div className="quality-stages"><span>01 / Specify</span><span>02 / Pack</span><span>03 / Confirm</span></div>
       <span className="motion-caption">Consider every detail.</span>
     </>}
