@@ -45,9 +45,9 @@ export default function ScrollHero(){
   useEffect(()=>{
     if(reduced)return;
     const host=hostRef.current,strip=host.querySelector('.vx-strip'),letters=host.querySelector('.vx-letters'),cards=[...host.querySelectorAll('.vx-category')];
-    const art=host.querySelector('.vx-hero-art');
+    const scene=host.querySelector('.vx-scene'),art=host.querySelector('.vx-hero-art');
     const video=art.querySelector('video');
-    let vw=innerWidth,vh=innerHeight,A=2.4,B=3,width=0,lettersWidth=0,disposed=false,phone=false;
+    let vw=innerWidth,vh=innerHeight,A=2.4,B=3,width=0,lettersWidth=0,travel=0,disposed=false,phone=false;
     let requestedFrame=0;
     function seek(){
       const desired=(requestedFrame+.15)/24;
@@ -59,6 +59,7 @@ export default function ScrollHero(){
       const [left,top,right,bottom,ground]=interpolateTrack(frame,cargoTrack);
       const cargoWidth=right-left;
       const driverX=frame<=48?interpolateTrack(frame,driverTrack)[0]:right+cargoWidth*.19;
+      const opening=1-clamp((frame-20)/12),closing=clamp((frame-78)/12);
       const attributes={
         '--ground':ground,
         '--cargo-x':(left+right)/2/960*100+'%',
@@ -71,6 +72,8 @@ export default function ScrollHero(){
         '--worker-visibility':clamp((73-frame)/5),
         '--signal-x':(52-43*clamp((frame-23)/19))+'%',
         '--inspect-x':(87+6*clamp((frame-24)/22))+'%',
+        '--mobile-camera-width':(100+18*opening+22*closing)+'cqw',
+        '--mobile-camera-shift':(8*closing)+'vw',
       };
       Object.entries(attributes).forEach(([key,value])=>art.style.setProperty(key,value));
     }
@@ -82,15 +85,30 @@ export default function ScrollHero(){
       requestedFrame=Math.round(q*LAST_FRAME);
       seek();
       const settled=q>=1;host.classList.toggle('settled',settled);host.style.setProperty('--ph',settled?'1':'0');
-      strip.style.transform=`translate3d(${vw-r*(width+.45*vw)}px,0,0)`;
+      strip.style.transform=`translate3d(${phone?-r*travel:vw-r*travel}px,0,0)`;
       letters.style.transform=`translate3d(${vw-r*(lettersWidth+vw)}px,0,0)`;
       const transition=clamp((q-.75)/.25);
-      host.style.setProperty('--scene-edge',`${phone?58-13*transition:93-48*transition}lvh`);
+      const opening=phone?(vh<460?.82:.62):.93;
+      const end=phone&&vh<460?.34:.45;
+      host.style.setProperty('--edge',end*vh+'px');
+      host.style.setProperty('--scene-edge',(opening+(end-opening)*transition)*vh+'px');
       cards.forEach(card=>{const x=card.getBoundingClientRect().left;card.style.setProperty('--s',(clamp((.98-x/vw)/.3,-.4,1.6)*100)+'%')});
     }
     function layout(){
-      if(disposed)return;vw=document.documentElement.clientWidth;vh=innerHeight;phone=vw<768||vw<=vh;A=phone?1.55:2.4;host.classList.toggle('phone',phone);const u=phone?Math.min(vw/430,vh/760,1.4):Math.min(vw/1440,vh/960);host.style.setProperty('--u',u+'px');
-      width=strip.scrollWidth;lettersWidth=letters.offsetWidth;B=(width+.45*vw)/vw*1.1;host.style.height=((1+A+B)*vh)+'px';
+      if(disposed)return;
+      vw=document.documentElement.clientWidth;
+      phone=vw<=900||vw<=innerHeight;
+      host.classList.toggle('phone',phone);
+      vh=scene.clientHeight;
+      A=phone?1.35:2.4;
+      const u=phone?Math.min(vw/430,vh/760,1.4):Math.min(vw/1440,vh/960);
+      host.style.setProperty('--u',u+'px');
+      width=strip.scrollWidth;
+      lettersWidth=letters.offsetWidth;
+      const lastCard=cards[cards.length-1];
+      travel=phone?Math.max(1,lastCard.offsetLeft+lastCard.offsetWidth/2-vw/2):width+.45*vw;
+      B=travel/vw*(phone?.74:1.1);
+      host.style.height=((1+A+B)*vh)+'px';
       render();host.classList.add('is-ready');
     }
     video.addEventListener('loadedmetadata',seek);
@@ -98,7 +116,12 @@ export default function ScrollHero(){
     syncArtwork();
     window.addEventListener('scroll',render,{passive:true});window.addEventListener('resize',layout,{passive:true});window.addEventListener('orientationchange',layout);
     layout();document.fonts.ready.then(()=>{if(!disposed)layout()});
-    const nextButton=host.querySelector('.vx-next');const nextCategory=()=>{const item=cards.find(c=>c.getBoundingClientRect().left>.35*vw)||cards[0];const r=clamp((vw+item.offsetLeft-.12*vw)/(width+.45*vw));scrollTo({top:trackTop()+A*vh+r*B*vh,behavior:'instant'})};nextButton.addEventListener('click',nextCategory);
+    const nextButton=host.querySelector('.vx-next');const nextCategory=()=>{
+      const item=cards.find(c=>c.getBoundingClientRect().left>.35*vw)||cards[0];
+      const offset=phone?item.offsetLeft+item.offsetWidth/2-vw/2:vw+item.offsetLeft-.12*vw;
+      const r=clamp(offset/travel);
+      scrollTo({top:trackTop()+A*vh+r*B*vh,behavior:'instant'});
+    };nextButton.addEventListener('click',nextCategory);
     return()=>{disposed=true;video.removeEventListener('loadedmetadata',seek);video.removeEventListener('seeked',onSeeked);window.removeEventListener('scroll',render);window.removeEventListener('resize',layout);window.removeEventListener('orientationchange',layout);nextButton.removeEventListener('click',nextCategory)};
   },[reduced]);
   if(reduced)return <section className="vx-static"><div className="container"><p className="eyebrow">Velnox Exports / Global possibilities</p><h1>Fresh produce.<br/><em>Global possibilities.</em></h1><p>Vegetables, fruits and broader product sourcing, shaped around your buyer requirements.</p><a className="pill" href="./products.html">Explore our products<ArrowUpRight size={16}/></a><img src={heroImage} alt={heroAlt} fetchPriority="high"/><div className="vx-static-links">{CATEGORIES.map(c=><a key={c.name} href={c.href}>{c.name}<ArrowUpRight size={15}/></a>)}</div></div></section>;
