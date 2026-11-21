@@ -33,6 +33,10 @@ async function getDatabase() {
         details jsonb NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
       )`,
+      sql`ALTER TABLE enquiries
+        ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'new'
+          CHECK (status IN ('new', 'follow_up', 'closed')),
+        ADD COLUMN IF NOT EXISTS status_changed_at timestamptz`,
     ]).then(() => sql).catch(error => {
       database = undefined;
       throw error;
@@ -61,12 +65,29 @@ export async function saveEnquiry({ submissionId, details }) {
   return existing;
 }
 
-export async function listEnquiries(before) {
+export async function listEnquiries({ before, status, search }) {
   const sql = await getDatabase();
   const rows = await sql`
-    SELECT id::text, details, created_at AS "createdAt" FROM enquiries
+    SELECT id::text, details, status, status_changed_at AS "statusChangedAt",
+      created_at AS "createdAt" FROM enquiries
     WHERE (${before}::bigint IS NULL OR id < ${before}::bigint)
+      AND (${status}::text IS NULL OR status = ${status})
+      AND (${search} = '' OR id::text = ${search} OR EXISTS (
+        SELECT 1 FROM jsonb_each_text(details) AS field
+        WHERE strpos(lower(field.value), lower(${search})) > 0
+      ))
     ORDER BY id DESC LIMIT 51
   `;
   return { enquiries: rows.slice(0, 50), next: rows.length > 50 ? rows[49].id : null };
+}
+
+export async function updateEnquiryStatus({ id, status, previousStatus }) {
+  const sql = await getDatabase();
+  const [updated] = await sql`
+    UPDATE enquiries
+    SET status = ${status}, status_changed_at = CASE WHEN status <> ${status} THEN now() ELSE status_changed_at END
+    WHERE id = ${id}::bigint AND status = ${previousStatus}
+    RETURNING id::text, status, status_changed_at AS "statusChangedAt"
+  `;
+  return updated;
 }
