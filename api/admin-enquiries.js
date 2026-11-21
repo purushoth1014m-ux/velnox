@@ -1,25 +1,12 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { hasDatabase, listEnquiries, updateEnquiryStatus } from '../server/enquiries.js';
 import { isSameOrigin, json, readJson } from '../server/http.js';
 import { isEnquiryStatus } from '../src/enquiry-status.js';
+import { cookieName, isEnquiryId, password, requireAdmin, sign, unavailable } from '../server/admin-auth.js';
 
-const cookieName = '__Host-velnox-admin';
 const sessionSeconds = 60 * 60 * 8;
-const password = () => process.env.ADMIN_PASSWORD;
 const hash = value => createHash('sha256').update(value).digest();
-const sign = expiry => createHmac('sha256', password()).update(`velnox-admin:${expiry}`).digest('base64url');
 const cookie = (value, seconds) => `${cookieName}=${value}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${seconds}`;
-const unavailable = () => json({ error: 'The admin password or enquiry database is not configured.' }, 503);
-const isEnquiryId = id => typeof id === 'string' && /^[1-9]\d{0,18}$/.test(id) && BigInt(id) <= 9223372036854775807n;
-
-function isSignedIn(request) {
-  const session = request.headers.get('Cookie')?.split('; ').find(value => value.startsWith(cookieName + '='));
-  const token = session?.slice(cookieName.length + 1);
-  const [expiry, signature] = token?.split('.') ?? [];
-  return /^\d{10}$/.test(expiry ?? '') && /^[-\w]{43}$/.test(signature ?? '')
-    && Number(expiry) > Math.floor(Date.now() / 1000)
-    && timingSafeEqual(Buffer.from(signature), Buffer.from(sign(expiry)));
-}
 
 export async function POST(request) {
   if (!isSameOrigin(request)) return json({ error: 'Invalid origin.' }, 403);
@@ -34,8 +21,8 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  if (!password() || !hasDatabase()) return unavailable();
-  if (!isSignedIn(request)) return json({ error: 'Sign in to view enquiries.' }, 401);
+  const blocked = requireAdmin(request);
+  if (blocked) return blocked;
   const params = new URL(request.url).searchParams;
   const before = params.get('before');
   const status = params.get('status');
@@ -52,8 +39,8 @@ export async function GET(request) {
 
 export async function PATCH(request) {
   if (!isSameOrigin(request)) return json({ error: 'Invalid origin.' }, 403);
-  if (!password() || !hasDatabase()) return unavailable();
-  if (!isSignedIn(request)) return json({ error: 'Sign in to update enquiries.' }, 401);
+  const blocked = requireAdmin(request);
+  if (blocked) return blocked;
   const update = await readJson(request, 4096);
   if (!isEnquiryId(update?.id) || !isEnquiryStatus(update.status) || !isEnquiryStatus(update.previousStatus)) {
     return json({ error: 'Invalid enquiry or status.' }, 400);

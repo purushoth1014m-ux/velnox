@@ -20,7 +20,7 @@ export function parseEnquiry(body) {
   return { submissionId: body.submissionId, details };
 }
 
-async function getDatabase() {
+export async function getDatabase() {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url) throw new Error('Enquiry database is not configured');
   if (!database) {
