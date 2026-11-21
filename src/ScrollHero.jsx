@@ -14,6 +14,9 @@ const heroImage='./media/handling-velnox-green.png';
 const heroAlt='A forest-green reach stacker lifting a cargo container above a stack of containers';
 const loadingClip='./media/handling-velnox-loading.mp4';
 const LAST_FRAME=96;
+const MOBILE_SHEET_COUNT=5;
+const MOBILE_SHEET_COLUMNS=4;
+const MOBILE_SHEET_ROWS=3;
 const cargoTrack=[
   // Frame, container left, top, right, bottom, and ground height in the 960×540 video.
   [0,516,145,633,254,447],[26,470,109,668,230,447],
@@ -46,20 +49,27 @@ export default function ScrollHero(){
     if(reduced)return;
     const host=hostRef.current,strip=host.querySelector('.vx-strip'),letters=host.querySelector('.vx-letters'),cards=[...host.querySelectorAll('.vx-category')];
     const scene=host.querySelector('.vx-scene'),art=host.querySelector('.vx-hero-art');
-    const video=art.querySelector('video');
+    const video=art.querySelector('video'),mobileFrames=art.querySelector('.vx-mobile-frames');
     let vw=innerWidth,vh=innerHeight,A=2.4,B=3,width=0,lettersWidth=0,travel=0,disposed=false,phone=false;
-    let requestedFrame=0;
+    let requestedFrame=0,displayedFrame=0,sceneEdge=0,ground=447,mobileZoom=1;
+    let sheets;
+    function sizeArtwork(){
+      const cameraWidth=vw*(phone?mobileZoom:1);
+      art.style.setProperty('--art-width',Math.min(cameraWidth,sceneEdge*960/ground)+'px');
+    }
     function seek(){
       const desired=(requestedFrame+.15)/24;
       if(video.readyState<1||video.seeking||Math.abs(video.currentTime-desired)<.02)return;
       video.currentTime=Math.min(desired,video.duration-.02);
     }
-    function syncArtwork(){
-      const frame=clamp(Math.floor(video.currentTime*24+.01),0,LAST_FRAME);
-      const [left,top,right,bottom,ground]=interpolateTrack(frame,cargoTrack);
+    function syncArtwork(frame){
+      displayedFrame=frame;
+      const [left,top,right,bottom,floor]=interpolateTrack(frame,cargoTrack);
+      ground=floor;
       const cargoWidth=right-left;
       const driverX=frame<=48?interpolateTrack(frame,driverTrack)[0]:right+cargoWidth*.19;
       const opening=1-clamp((frame-20)/12),closing=clamp((frame-78)/12);
+      mobileZoom=1+.18*opening+.22*closing;
       const attributes={
         '--ground':ground,
         '--cargo-x':(left+right)/2/960*100+'%',
@@ -72,18 +82,48 @@ export default function ScrollHero(){
         '--worker-visibility':clamp((73-frame)/5),
         '--signal-x':(52-43*clamp((frame-23)/19))+'%',
         '--inspect-x':(87+6*clamp((frame-24)/22))+'%',
-        '--mobile-camera-width':(100+18*opening+22*closing)+'cqw',
         '--mobile-camera-shift':(8*closing)+'vw',
       };
       Object.entries(attributes).forEach(([key,value])=>art.style.setProperty(key,value));
+      sizeArtwork();
     }
-    function onSeeked(){syncArtwork();seek()}
+    function onSeeked(){
+      if(phone)return;
+      syncArtwork(clamp(Math.floor(video.currentTime*24+.01),0,LAST_FRAME));
+      seek();
+    }
+    function showMobileFrame(){
+      const frame=Math.round(requestedFrame/2)*2;
+      const framesPerSheet=MOBILE_SHEET_COLUMNS*MOBILE_SHEET_ROWS;
+      const index=frame/2;
+      const sheet=sheets[Math.floor(index/framesPerSheet)];
+      if(!sheet.loaded)return;
+      const tile=index%framesPerSheet;
+      const x=(tile%MOBILE_SHEET_COLUMNS)/(MOBILE_SHEET_COLUMNS-1)*100;
+      const y=Math.floor(tile/MOBILE_SHEET_COLUMNS)/(MOBILE_SHEET_ROWS-1)*100;
+      mobileFrames.style.backgroundImage=`url("${sheet.image.src}")`;
+      mobileFrames.style.backgroundSize=`${MOBILE_SHEET_COLUMNS*100}% ${MOBILE_SHEET_ROWS*100}%`;
+      mobileFrames.style.backgroundPosition=`${x}% ${y}%`;
+      if(frame!==displayedFrame)syncArtwork(frame);
+    }
+    function loadMobileFrames(){
+      sheets=Array.from({length:MOBILE_SHEET_COUNT},(_,index)=>{
+        const image=new Image();
+        const sheet={image,loaded:false};
+        image.onload=()=>{
+          sheet.loaded=true;
+          if(!disposed&&phone)showMobileFrame();
+        };
+        image.src=`./media/handling-mobile-${index}.jpg`;
+        return sheet;
+      });
+    }
     const trackTop=()=>host.getBoundingClientRect().top+scrollY;
     const position=()=>clamp(scrollY-trackTop(),0,(A+B)*vh);
     function render(){
       const y=position(),q=clamp(y/(A*vh)),r=clamp((y-A*vh)/(B*vh));
       requestedFrame=Math.round(q*LAST_FRAME);
-      seek();
+      if(phone)showMobileFrame();else seek();
       const settled=q>=1;host.classList.toggle('settled',settled);host.style.setProperty('--ph',settled?'1':'0');
       strip.style.transform=`translate3d(${phone?-r*travel:vw-r*travel}px,0,0)`;
       letters.style.transform=`translate3d(${vw-r*(lettersWidth+vw)}px,0,0)`;
@@ -91,14 +131,18 @@ export default function ScrollHero(){
       const opening=phone?(vh<460?.82:.62):.93;
       const end=phone&&vh<460?.34:.45;
       host.style.setProperty('--edge',end*vh+'px');
-      host.style.setProperty('--scene-edge',(opening+(end-opening)*transition)*vh+'px');
+      sceneEdge=(opening+(end-opening)*transition)*vh;
+      host.style.setProperty('--scene-edge',sceneEdge+'px');
+      sizeArtwork();
       cards.forEach(card=>{const x=card.getBoundingClientRect().left;card.style.setProperty('--s',(clamp((.98-x/vw)/.3,-.4,1.6)*100)+'%')});
     }
     function layout(){
       if(disposed)return;
       vw=document.documentElement.clientWidth;
-      phone=vw<=900||vw<=innerHeight;
+      phone=vw<=1024||vw<=innerHeight||matchMedia('(pointer: coarse)').matches;
       host.classList.toggle('phone',phone);
+      if(phone&&!sheets)loadMobileFrames();
+      if(!phone&&!video.hasAttribute('src'))video.src=loadingClip;
       vh=scene.clientHeight;
       A=phone?1.35:2.4;
       const u=phone?Math.min(vw/430,vh/760,1.4):Math.min(vw/1440,vh/960);
@@ -113,7 +157,7 @@ export default function ScrollHero(){
     }
     video.addEventListener('loadedmetadata',seek);
     video.addEventListener('seeked',onSeeked);
-    syncArtwork();
+    syncArtwork(0);
     window.addEventListener('scroll',render,{passive:true});window.addEventListener('resize',layout,{passive:true});window.addEventListener('orientationchange',layout);
     layout();document.fonts.ready.then(()=>{if(!disposed)layout()});
     const nextButton=host.querySelector('.vx-next');const nextCategory=()=>{
@@ -129,7 +173,8 @@ export default function ScrollHero(){
     <div className="vx-scene">
       <div className="vx-hero-art">
         <div className="vx-loading-stage" role="img" aria-label="Workers guide a green VELNOX EXPORT container onto a black truck with a driver in the cab">
-        <video className="vx-loading-video" src={loadingClip} poster={heroImage} muted playsInline preload="auto" aria-hidden="true"/>
+        <video className="vx-loading-video" poster={heroImage} muted playsInline preload="auto" aria-hidden="true"/>
+        <span className="vx-mobile-frames" style={{backgroundImage:`url("${heroImage}")`}} aria-hidden="true"/>
         <span className="vx-cargo-brand" aria-hidden="true">VELNOX EXPORT</span>
         <span className="vx-truck-driver" aria-hidden="true">
           <span className="vx-driver-seat"/>

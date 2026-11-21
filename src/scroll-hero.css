@@ -4,10 +4,14 @@
 .mobile-nav-overlay .velnox-logo,.premium-footer .velnox-logo{filter:grayscale(1) invert(1) brightness(1.2) sepia(.15)}
 .vx-scroll{--u:1px;--edge:45lvh;--scene-edge:93lvh;--ph:0;height:650vh;position:relative;background:#fff;font-family:Archivo,Arial,sans-serif;color:#111}
 .vx-scene{position:sticky;top:0;height:100vh;height:100lvh;overflow:hidden;isolation:isolate;background:linear-gradient(to bottom,#fff 0 var(--scene-edge),#111 var(--scene-edge) 100%)}
-.vx-hero-art{--ground:447;--cargo-width:117;--art-width:min(100cqw,calc(100cqh * 960 / var(--ground)));position:absolute;top:0;left:0;width:100%;height:var(--scene-edge);display:grid;place-items:end center;pointer-events:none;container-type:size}
+.vx-hero-art{--ground:447;--cargo-width:117;--art-width:100vw;position:absolute;top:0;left:0;width:100%;height:var(--scene-edge);display:grid;grid-template-columns:minmax(0,1fr);place-items:end center;pointer-events:none}
 .vx-loading-stage{position:relative;width:var(--art-width);height:calc(var(--art-width) * var(--ground) / 960)}
-.vx-loading-stage::before{content:'';position:absolute;top:100%;left:50%;width:100vw;height:100lvh;transform:translateX(-50%);background:#111}
-.vx-loading-video{position:absolute;top:0;left:0;width:100%;height:calc(var(--art-width) * 9 / 16);display:block;object-fit:cover;clip-path:inset(0 0 calc(100% - 100% * var(--ground) / 540) 0)}
+.vx-loading-stage::before{content:'';position:absolute;top:100%;left:50%;width:100vw;height:100vh;transform:translateX(-50%);background:#111}
+.vx-loading-video,.vx-mobile-frames{position:absolute;top:0;left:0;width:100%;height:calc(var(--art-width) * 9 / 16);clip-path:inset(0 0 calc(100% - 100% * var(--ground) / 540) 0)}
+.vx-loading-video{display:block;object-fit:cover}
+.vx-mobile-frames{display:none;background-size:100% 100%;background-repeat:no-repeat}
+.vx-scroll.phone .vx-loading-video{display:none}
+.vx-scroll.phone .vx-mobile-frames{display:block}
 .vx-cargo-brand{position:absolute;left:var(--cargo-x,50%);top:var(--cargo-y,50%);transform:translate(-50%,-50%);opacity:var(--brand-opacity,0);color:#fff8dd;font:600 calc(var(--art-width) * var(--cargo-width) / 960 * .079)/1 Archivo,Arial,sans-serif;letter-spacing:.11em;white-space:nowrap;text-shadow:0 1px 2px #102b1b}
 .vx-truck-driver{position:absolute;left:var(--driver-x,100%);top:var(--driver-y,50%);transform:translate(-53%,-47%);opacity:var(--driver-visible,0);font-size:calc(var(--art-width) * var(--cargo-width) / 960 * .031);width:1.12em;height:.79em;clip-path:polygon(0 0,84% 0,100% 18%,96% 100%,0 100%)}
 .vx-truck-driver span{position:absolute;display:block}
@@ -19,13 +23,12 @@
 .vx-driver-wheel{right:.06em;bottom:.10em;width:.23em;height:.28em;border:.045em solid #2c3031;border-radius:50%;transform:rotate(-24deg)}
 .vx-driver-arm{left:.45em;top:.49em;width:.52em;height:.145em;border-radius:.07em;background:linear-gradient(90deg,#405843 40%,#ad8266 43%);transform:rotate(10deg);transform-origin:left center}
 .vx-scroll.phone .vx-scene{height:100svh}
-.vx-scroll.phone .vx-hero-art{--art-width:min(var(--mobile-camera-width,118cqw),calc(100cqh * 960 / var(--ground)));grid-template-columns:minmax(0,1fr)}
 .vx-scroll.phone .vx-loading-stage{transform:translateX(var(--mobile-camera-shift,0vw))}
 .vx-scroll.phone .vx-loading-stage::before{width:140vw}
 .vx-scroll.phone .vx-cargo-brand{font-size:max(10px,calc(var(--art-width) * var(--cargo-width) / 960 * .085))}
 .vx-scroll.phone .vx-scroll-hint{background:#ffffff14;color:#fff}
 .vx-scroll.phone .vx-scroll-hint span{background:#83ba79}
-@media(max-width:900px){.vx-scroll{--scene-edge:62svh}}
+@media(max-width:1024px){.vx-scroll{--scene-edge:62vh;--scene-edge:62svh}}
 .vx-worker{position:absolute;left:var(--worker-x);bottom:0;width:1em;height:2.15em;font-size:calc(var(--art-width) * .022);z-index:1;opacity:var(--worker-visibility,1);transform:translateX(-50%);filter:drop-shadow(0 .05em .045em #1114)}
 .vx-worker--signal{--worker-x:var(--signal-x,52%);--vest:#f7bc43;--helmet:#ffcf58;--arm-rest:-40deg;--arm-work:-114deg;--work-speed:2.6s}
 .vx-worker--inspect{--worker-x:var(--inspect-x,87%);--vest:#ef9852;--helmet:#fff2c4;--arm-rest:36deg;--arm-work:92deg;--work-speed:3.4s}
